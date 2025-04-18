@@ -1,0 +1,15 @@
+[[pages]]
+path = 'src/pages/tournaments.py'
+name = 'Tournaments'
+icon = ':coin:'
+
+[[pages]]
+path = 'src/pages/inspect.py'
+name = 'Inspect'
+icon = ':coin:'
+
+
+[[pages]]
+path = 'src/pages/registered.py'
+name = 'Registered'
+icon = ':coin:'

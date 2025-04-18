@@ -1,0 +1,42 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  color: var(--textColor);
+  background-color: var(--backgroundColor);
+}
+
+.username-input {
+  font-size: 1.2rem;
+  padding: 0.6rem 1rem;
+  width: 90%;
+  max-width: 400px;
+  border: 1px solid var(--primaryColor, #ccc);
+  border-radius: 8px;
+  outline: none;
+  background-color: var(--secondaryBackgroundColor);
+  color: var(--textColor);
+}
+
+.username-input::placeholder {
+  color: var(--textColor, #888);
+}
+
+.login-button {
+  width: 100%;
+  height: 60px;
+  background-image: url('./assets/hive_keychain_login.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out;
+}
+
+.login-button:hover {
+  transform: scale(1.05);
+}

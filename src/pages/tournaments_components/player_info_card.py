@@ -49,10 +49,26 @@ player_info_styles = """
 """
 
 
-def get_player_info_card(row):
-    return f"""<div class='player-card'>
-            <a href='inspect?player={row["player"]}' target='_self' class='player-card-link'>
-                <img src='{player_icon_url}' alt='player icon' />
-                <span>{row["player"]}</span>
-            </a>
+def get_player_info_card(row, link=True):
+    if 'player' in row:
+        account = row["player"]
+    else:
+        account = row['account']
+
+    img_html = f"<img src='{player_icon_url}' alt='player icon' />"
+    name_html = f"<span>{account}</span>"
+
+    if link:
+        content_html = f"""<a href='inspect?player={account}' target='_self' class='player-card-link'>
+            {img_html}
+            {name_html}
+        </a>"""
+    else:
+        content_html = f"""<div class='player-card-no-link'>
+            {img_html}
+            {name_html}
         </div>"""
+
+    return f"""<div class='player-card'>
+        {content_html}
+    </div>"""

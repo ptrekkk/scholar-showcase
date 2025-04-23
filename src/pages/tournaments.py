@@ -5,32 +5,13 @@ import streamlit as st
 
 from src.api import spl, db_actions
 from src.pages.tournaments_components import filter_section
-from src.pages.tournaments_components.battle_info_card import get_battle_info_card, battle_info_styles
-from src.pages.tournaments_components.contact_info_card import get_contact_info_card, contact_info_styles
-from src.pages.tournaments_components.player_info_card import get_player_info_card, player_info_styles
+from src.pages.tournaments_components.battle_info_card import get_battle_info_card
+from src.pages.tournaments_components.contact_info_card import get_contact_info_card
+from src.pages.tournaments_components.player_info_card import get_player_info_card
 from src.utils.themes import get_back_colors
-
-if 'settings' in st.secrets and "tournaments" in st.secrets["settings"]:
-    tournament_names = st.secrets["settings"]["tournaments"]
-else:
-    tournament_names = None
+from src.utils.tournaments_utils import get_qualified_tournaments, calculate_win_rate
 
 log = logging.getLogger("Tournaments")
-
-container_style = """<style>
-    .flex-container {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    @media screen and (max-width: 768px) {
-        .flex-container {
-            flex-direction: column;
-        }
-    }
-    </style>"""
 
 
 @st.cache_data(ttl="1h")
@@ -39,7 +20,7 @@ def get_aggregated_players(tournament_ids: list[str]):
 
     for _id in tournament_ids:
         log.info(f"Processing tournament ID: {_id}")
-        players = spl.get_tournament(_id)  # 🚨 not spl.get_tournament
+        players = spl.get_tournament(_id)
         all_players = pd.concat([all_players, players], ignore_index=True)
 
     if all_players.empty:
@@ -50,20 +31,17 @@ def get_aggregated_players(tournament_ids: list[str]):
         'losses': 'sum',
         'finish': lambda x: list(x),
     }).reset_index()
-    grouped['tournaments_played'] = grouped['finish'].apply(len)
-    return grouped[['player', 'tournaments_played', 'wins', 'losses', 'finish']]
+    grouped['tournaments'] = grouped['finish'].apply(len)
+    grouped['battles'] = grouped["wins"] + grouped["losses"]
+    grouped['win rate'] = grouped.apply(calculate_win_rate, axis=1)
+
+    return grouped[['player', 'tournaments', 'wins', 'losses', 'finish', 'battles', 'win rate']]
 
 
 def add_player_overview(df, tournament_name):
     row_colors = get_back_colors()
 
     st.markdown(f"## Participants of tournament {tournament_name}")
-
-    # Add styles once
-    st.markdown(f'{container_style}'
-                f'{player_info_styles}'
-                f'{battle_info_styles}'
-                f'{contact_info_styles}', unsafe_allow_html=True)
 
     for idx, (_, row) in enumerate(df.iterrows()):
         bg_color = row_colors[idx % 2]
@@ -85,40 +63,34 @@ def add_player_overview(df, tournament_name):
 
 def merge_data_with_scholars(grouped):
     scholars = db_actions.get_all_scholars()
-    scholars = scholars.rename(columns={"account": "player"})
+
     merged_df = pd.merge(
         grouped,
         scholars,
         how='left',
-        on=['player']
+        left_on='player',
+        right_on='account',
+        suffixes=('', '_scholar')
     )
+
     merged_df = merged_df.sort_values(by='wins', ascending=False)
     return merged_df
 
 
-def calculate_win_rate(row):
-    battles = row["wins"] + row["losses"]
-    return round(row["wins"] / battles * 100) if battles > 0 else 0
-
-
 def get_page():
     st.title("Tournament Overview")
-    tournament_name = st.selectbox("Select tournament:", options=tournament_names)
+    tournament_name = st.selectbox("Select tournament:", options=get_qualified_tournaments())
     if tournament_name:
         with st.spinner("Loading data..."):
             df = spl.get_complete_tournaments()
             matching_tournaments = df[df['name'].str.startswith(tournament_name)]
 
             if matching_tournaments.empty:
-                st.warning(f'No tournaments found with name {tournament_name}')
+                st.warning(f'❌ No tournaments found with name {tournament_name}')
                 return
 
             tournament_ids = matching_tournaments['id'].tolist()
             grouped = get_aggregated_players(tournament_ids)
-            grouped['tournaments'] = grouped['finish'].apply(len)
-            grouped['battles'] = grouped["wins"] + grouped["losses"]
-            grouped['win rate'] = grouped.apply(calculate_win_rate, axis=1)
-
             merged_df = merge_data_with_scholars(grouped)
 
             st.write(f"Found tournaments: {matching_tournaments.index.size}")

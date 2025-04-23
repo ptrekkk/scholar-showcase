@@ -2,7 +2,7 @@ import streamlit as st
 
 from src.api import db_actions
 from src.pages.tournaments_components.contact_info_card import get_contact_info_card
-from src.pages.tournaments_components.player_info_card import player_info_styles, get_player_info_card
+from src.pages.tournaments_components.player_info_card import get_player_info_card
 from src.utils.themes import get_back_colors
 
 container_style = """<style>
@@ -26,11 +26,6 @@ def get_page():
     row_colors = get_back_colors()
 
     df = db_actions.get_all_managers()
-    df = df.rename(columns={"account": "player"})
-
-    # Add styles once
-    st.markdown(f'{container_style}'
-                f'{player_info_styles}', unsafe_allow_html=True)
 
     for idx, (_, row) in enumerate(df.iterrows()):
         bg_color = row_colors[idx % 2]

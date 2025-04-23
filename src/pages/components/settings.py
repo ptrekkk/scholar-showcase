@@ -1,3 +1,4 @@
+import logging
 import re
 
 import streamlit as st
@@ -5,6 +6,8 @@ import streamlit as st
 from src.api import db_actions
 from src.models.models import User, RoleEnum, RewardSplitEnum, PreferredModesEnum, PreferredLeagueEnum
 from src.utils import notifications, local_storage_manager
+
+log = logging.getLogger("Settings")
 
 
 def is_valid_discord(discord: str) -> bool:
@@ -103,6 +106,7 @@ def show_settings_dialog(user: User):
                     user.preferred_league = None
                     user.reward_split = None
 
+                log.info(f"Settings saved for user {user.account}")
                 notifications.set_start_up_message("Settings saved.")
                 updated_user = db_actions.update_user(user)
                 local_storage_manager.save_user(updated_user)

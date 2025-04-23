@@ -1,8 +1,12 @@
+import logging
+
 import streamlit as st
 
 from src.pages.components import settings
 from src.utils import notifications, local_storage_manager, login
 from streamlit_hive_login import st_hive_login
+
+log = logging.getLogger("Login")
 
 
 @st.dialog("Login to your account")
@@ -12,7 +16,9 @@ def show_login_dialog():
 
     if result:
         if result.get("success"):
-            user = login.login(result['username'])
+            user = result['username']
+            log.info(f"Login success for user {user}")
+            user = login.login(user)
             with st.spinner():
                 local_storage_manager.save_user(user)
             st.rerun()

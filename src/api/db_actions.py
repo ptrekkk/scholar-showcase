@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, and_
 from sqlalchemy.orm import sessionmaker
 
 from src.models.models import User, RoleEnum
@@ -37,9 +37,7 @@ def update_user(user: User) -> User:
 
 
 def users_to_df(users) -> pd.DataFrame:
-    if users:
-        return pd.DataFrame([user.to_dict() for user in users])
-    else:
+    if not users:
         return pd.DataFrame(columns=[
             "account",
             "role",
@@ -48,6 +46,12 @@ def users_to_df(users) -> pd.DataFrame:
             "preferred_league",
             "reward_split"
         ])
+
+    # Wrap single user in list
+    if not isinstance(users, list):
+        users = [users]
+
+    return pd.DataFrame([user.to_dict() for user in users])
 
 
 def get_all_managers():
@@ -60,3 +64,9 @@ def get_all_scholars():
     stmt = select(User).where(User.role == RoleEnum.Scholar)
     scholars = db.scalars(stmt).all()
     return users_to_df(scholars)
+
+
+def get_scholar(account):
+    stmt = select(User).where(and_(User.role == RoleEnum.Scholar, User.account == account))
+    scholar = db.scalar(stmt)
+    return users_to_df(scholar)

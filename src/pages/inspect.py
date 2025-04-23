@@ -1,8 +1,14 @@
-import pandas as pd
+import logging
+
 import streamlit as st
 
 from src.api import spl
-from src.pages.inspect_components.leauge_component import league_info, league_info_style
+from src.pages.components.scholars import add_scholar_card
+from src.pages.inspect_components.guild_info import add_guild_info
+from src.pages.inspect_components.leauge_component import add_league_cards
+from src.pages.inspect_components.qualitfied_tournaments import add_tournaments_section
+
+log = logging.getLogger("Inspect")
 
 
 def get_page():
@@ -14,51 +20,22 @@ def get_page():
     player = st.text_input("account name", value=player)
     if not player:
         st.info("Please enter a player account to begin.")
+        return
 
     with st.spinner("Loading data..."):
         if player:
-            result = spl.get_player_profile(player)
-            if not result:
+            log.info(f"Inspect player: {player}")
+            result_dict = spl.get_player_profile(player)
+            if not result_dict:
                 st.warning("Player not found, enter valid splinterlands account")
-            if result:
-                modern_df = pd.DataFrame(result['season_details']['modern'], index=[0])
-                wild_df = pd.DataFrame(result['season_details']['wild'], index=[0])
-                survival_df = pd.DataFrame(result['season_details']['survival'], index=[0])
+                return
+            if result_dict:
+                add_league_cards(result_dict)
 
-                league_data = []
-                if not modern_df.empty:
-                    league_data.append(("modern", modern_df))
-                if not wild_df.empty:
-                    league_data.append(("wild", wild_df))
-                if not survival_df.empty:
-                    league_data.append(("survival", survival_df))
+                add_guild_info(result_dict)
 
-                # Show cards in left-to-right order using columns
-                st.markdown(league_info_style, unsafe_allow_html=True)
-                columns = st.columns(3)
+            with st.spinner("Loading finished tournaments"):
+                df = spl.get_complete_tournaments()
+                add_tournaments_section(df, player)
 
-                for i, (format_type, df) in enumerate(league_data):
-                    with columns[i]:
-                        league_info(df, format_type)
-
-                guild_name = find_guild_name(result)
-                if guild_name:
-                    st.subheader(f"Member of guild: {guild_name}")
-                else:
-                    st.subheader("No member of a guild")
-
-
-def find_guild_name(d):
-    if isinstance(d, dict):
-        for key, value in d.items():
-            if key == "guild_name":
-                return value
-            result = find_guild_name(value)
-            if result is not None:
-                return result
-    elif isinstance(d, list):
-        for item in d:
-            result = find_guild_name(item)
-            if result is not None:
-                return result
-    return None
+            add_scholar_card(player)

@@ -79,7 +79,7 @@ def merge_data_with_scholars(grouped):
 def get_page():
     st.title("Tournament Overview")
 
-    use_all = st.checkbox("All Qualified Tournaments")
+    use_all = st.checkbox("All Qualified Tournaments", value=True)
 
     qualified_names = get_qualified_tournaments()
     tournament_name = None

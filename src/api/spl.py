@@ -96,8 +96,10 @@ def get_complete_tournaments():
     return pd.DataFrame()
 
 
-def get_tournament(_id):
-    params = {"id": _id}
+@st.cache_data()
+def get_tournament(tournament_id):
+    log.info(f"Get SPL tournament: {tournament_id}")
+    params = {"id": tournament_id}
     result = fetch_api_data(f'{API_URLS['base']}tournaments/find', params=params, data_key='players')
     if result:
         return pd.DataFrame(result)

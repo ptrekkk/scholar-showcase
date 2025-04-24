@@ -14,13 +14,12 @@ from src.utils.tournaments_utils import get_qualified_tournaments, calculate_win
 log = logging.getLogger("Tournaments")
 
 
-@st.cache_data(ttl="1h")
 def get_aggregated_players(tournament_ids: list[str]):
     all_players = pd.DataFrame()
 
-    for _id in tournament_ids:
-        log.info(f"Processing tournament ID: {_id}")
-        players = spl.get_tournament(_id)
+    for tournament_id in tournament_ids:
+        log.info(f"Processing tournament ID: {tournament_id}")
+        players = spl.get_tournament(tournament_id)
         all_players = pd.concat([all_players, players], ignore_index=True)
 
     if all_players.empty:
@@ -79,24 +78,37 @@ def merge_data_with_scholars(grouped):
 
 def get_page():
     st.title("Tournament Overview")
-    tournament_name = st.selectbox("Select tournament:", options=get_qualified_tournaments())
-    if tournament_name:
-        with st.spinner("Loading data..."):
-            df = spl.get_complete_tournaments()
+
+    use_all = st.checkbox("All Qualified Tournaments")
+
+    qualified_names = get_qualified_tournaments()
+    tournament_name = None
+
+    if not use_all:
+        tournament_name = st.selectbox("Select tournament:", options=qualified_names)
+
+    with st.spinner("Loading data..."):
+        df = spl.get_complete_tournaments()
+
+        if use_all:
+            matching_tournaments = df[df['name'].isin(qualified_names)]
+        elif tournament_name:
             matching_tournaments = df[df['name'].str.startswith(tournament_name)]
+        else:
+            matching_tournaments = pd.DataFrame()
 
-            if matching_tournaments.empty:
-                st.warning(f'❌ No tournaments found with name {tournament_name}')
-                return
+        if matching_tournaments.empty:
+            st.warning('❌ No tournaments found.')
+            return
 
-            tournament_ids = matching_tournaments['id'].tolist()
-            grouped = get_aggregated_players(tournament_ids)
-            merged_df = merge_data_with_scholars(grouped)
+        tournament_ids = matching_tournaments['id'].tolist()
+        grouped = get_aggregated_players(tournament_ids)
+        merged_df = merge_data_with_scholars(grouped)
 
-            st.write(f"Found tournaments: {matching_tournaments.index.size}")
+        st.write(f"Found tournaments: {matching_tournaments.index.size}")
 
-            content_col, filters = st.columns([3, 1], gap='large')
-            with filters:
-                merged_df = filter_section.get_page(merged_df)
-            with content_col:
-                add_player_overview(merged_df, tournament_name)
+        content_col, filters = st.columns([3, 1], gap='large')
+        with filters:
+            merged_df = filter_section.get_page(merged_df)
+        with content_col:
+            add_player_overview(merged_df, "All Tournaments" if use_all else tournament_name)

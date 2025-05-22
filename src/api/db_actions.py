@@ -11,6 +11,7 @@ db_url = st.secrets["database"]["url"]
 engine = create_engine(db_url)
 Session = sessionmaker(bind=engine)
 
+
 # Context manager for session
 @contextmanager
 def get_session():
@@ -20,10 +21,12 @@ def get_session():
     finally:
         session.close()
 
+
 # Function to get a single user
 def get_user(username: str) -> User | None:
     with get_session() as session:
         return session.query(User).filter_by(account=username).first()
+
 
 # Function to create a new user
 def create_user(username: str) -> User:
@@ -40,6 +43,7 @@ def create_user(username: str) -> User:
         session.refresh(new_user)
         return new_user
 
+
 # Function to update an existing user
 def update_user(user: User) -> User:
     with get_session() as session:
@@ -47,6 +51,7 @@ def update_user(user: User) -> User:
         session.commit()
         session.refresh(updated_user)
         return updated_user
+
 
 # Convert users to DataFrame
 def users_to_df(users) -> pd.DataFrame:
@@ -65,6 +70,7 @@ def users_to_df(users) -> pd.DataFrame:
 
     return pd.DataFrame([user.to_dict() for user in users])
 
+
 # Get all managers
 def get_all_managers():
     with get_session() as session:
@@ -72,12 +78,14 @@ def get_all_managers():
         managers = session.scalars(stmt).all()
         return users_to_df(managers)
 
+
 # Get all scholars
 def get_all_scholars():
     with get_session() as session:
         stmt = select(User).where(User.role == RoleEnum.Scholar)
         scholars = session.scalars(stmt).all()
         return users_to_df(scholars)
+
 
 # Get specific scholar by account
 def get_scholar(account):

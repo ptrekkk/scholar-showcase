@@ -1,68 +1,80 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react";
 import {
   Streamlit,
   withStreamlitConnection,
   ComponentProps
-} from "streamlit-component-lib"
-import "./App.css"
+} from "streamlit-component-lib";
+import { KeychainKeyTypes, KeychainSDK, Login } from "keychain-sdk";   // NEW
+import "./App.css";
+
+const keychain = new KeychainSDK(window as any);      // NEW
 
 const HiveLogin = (props: ComponentProps) => {
-  const [username, setUsername] = useState("")
-  const theme = props.theme
+  const [username, setUsername] = useState("");
 
+  // ───────────── 1. Ask Keychain (extension *or* mobile) to initialise itself
   useEffect(() => {
-    Streamlit.setComponentReady()
-    Streamlit.setFrameHeight()
-  }, [])
+    // The call is safe even if Keychain is not installed.
+    console.log("TEST");
+    (window as any).hive_keychain?.requestHandshake?.(() => {});
+    Streamlit.setComponentReady();
+    Streamlit.setFrameHeight();
+  }, []);
 
-  const onLogin = () => {
-    if (!username) return
+  // ───────────── 2. Main login handler (now async/await + SDK)
+  const onLogin = useCallback(async () => {
+    if (!username) return;
 
-    // @ts-ignore
-    if (typeof window.hive_keychain === 'undefined') {
+    /* 2-a Detect Keychain (desktop or mobile) */
+    const hasKC = await keychain.isKeychainInstalled();  // SDK helper
+    if (!hasKC) {
       Streamlit.setComponentValue({
         success: false,
-        message: "Hive Keychain SDK not loaded.",
-        username: username,
+        message: "Hive Keychain not detected.",
+        username,
         ts: null,
         sig: null,
-      })
-      return
+      });
+      return;
     }
 
-    const ts = Date.now()
-    const message = username + ts
+    /* 2-b Build and send the login (= signBuffer) request */
+    const ts = Date.now().toString();
+    const payload: Login = {
+      username,
+      message: ts,
+      method: KeychainKeyTypes.posting,
+      title: "Login",
+    };
 
-    // @ts-ignore
-    window.hive_keychain.requestSignBuffer(username, message, 'Posting', (response) => {
-      if (response.success) {
-        Streamlit.setComponentValue({
-          success: true,
-          message: "Message signed successfully!",
-          username: username,
-          ts: ts,
-          sig: response.result,
-        })
-      } else {
-        Streamlit.setComponentValue({
-          success: false,
-          message: "Error in signing message.",
-          username: username,
-          ts: ts,
-          sig: null,
-        })
-      }
-    })
-  }
+    try {
+      const res = await keychain.login(payload);        // SDK helper
+      Streamlit.setComponentValue({
+        success: res.success,
+        message: res.success ? "Message signed!" : res.message,
+        username,
+        ts,
+        sig: res.result ?? null,
+      });
+    } catch (err: any) {
+      Streamlit.setComponentValue({
+        success: false,
+        message: err?.message || "Keychain error",
+        username,
+        ts,
+        sig: null,
+      });
+    }
+  }, [username]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      onLogin()
-    }
-  }
+    if (e.key === "Enter") onLogin();
+  };
 
+  /* 2-c UI stays unchanged */
+  const theme = props.theme;
   return (
-    <div className={`container ${theme?.base === 'dark' ? 'dark' : 'light'}`}>
+    <div className={`container ${theme?.base === "dark" ? "dark" : "light"}`}>
       <input
         className="username-input"
         placeholder="Hive username"
@@ -72,7 +84,7 @@ const HiveLogin = (props: ComponentProps) => {
       />
       <button className="login-button" onClick={onLogin} />
     </div>
-  )
-}
+  );
+};
 
-export default withStreamlitConnection(HiveLogin)
+export default withStreamlitConnection(HiveLogin);

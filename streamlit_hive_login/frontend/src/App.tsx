@@ -15,7 +15,6 @@ const HiveLogin = (props: ComponentProps) => {
   // ───────────── 1. Ask Keychain (extension *or* mobile) to initialise itself
   useEffect(() => {
     // The call is safe even if Keychain is not installed.
-    console.log("TEST");
     (window as any).hive_keychain?.requestHandshake?.(() => {});
     Streamlit.setComponentReady();
     Streamlit.setFrameHeight();
